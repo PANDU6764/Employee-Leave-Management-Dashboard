@@ -82,31 +82,43 @@ The application follows a modular architecture using **Flask** and **SQLAlchemy*
 
 ## Login Page
 
-![Login](login page.png)
+<p align="center">
+  <img src="login page.png" width="900">
+</p>
 
 ---
 
 ## Dashboard
 
-![Dashboard](Dashboard Overview.png)
+<p align="center">
+  <img src="Dashboard Overview.png" width="900">
+</p>
+
 
 ---
 
 ## Pending Leave Requests
 
-![Pending Requests](Pending Requests.png)
+<p align="center">
+  <img src="Pending Requests.png" width="900">
+</p>
 
 ---
 
 ## Employee Directory
 
-![Employee Directory](Employee Directory.png)
+<p align="center">
+  <img src="Employee Directory.png" width="900">
+</p>
 
 ---
 
 ## Leave Reports & Analytics
 
-![Reports](leave report.png)
+
+<p align="center">
+  <img src="leave report.png" width="900">
+</p>
 
 ---
 
