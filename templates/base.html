@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina - Employee Leave Management System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Reporting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Flash Messages (Toasts) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="toast-container" id="toastContainer">
+                {% for category, message in messages %}
+                    <div class="toast toast-{{ category }}" role="alert">
+                        <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-xmark{% else %}fa-circle-info{% endif %} toast-icon"></i>
+                        <span class="toast-message">{{ message }}</span>
+                        <button type="button" class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="app-container {% if not current_user %}auth-layout{% endif %}">
+        {% if current_user %}
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-plane-departure logo-icon"></i>
+                    <span class="logo-text">Lumina</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="user-profile-summary">
+                <div class="profile-avatar">
+                    {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                </div>
+                <div class="profile-details">
+                    <span class="profile-name">{{ current_user.first_name }} {{ current_user.last_name }}</span>
+                    <span class="profile-role">
+                        {{ current_user.role.upper() }}
+                    </span>
+                    <span class="profile-dept"><i class="fa-solid fa-building"></i> {{ current_user.department }}</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active" data-section="dashboard-section">
+                        <a href="#"><i class="fa-solid fa-gauge"></i> <span>Dashboard</span></a>
+                    </li>
+                    
+                    {% if current_user.role == 'employee' %}
+                    <li data-section="apply-section">
+                        <a href="#"><i class="fa-solid fa-paper-plane"></i> <span>Apply Leave</span></a>
+                    </li>
+                    <li data-section="history-section">
+                        <a href="#"><i class="fa-solid fa-clock-rotate-left"></i> <span>My Leave History</span></a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.role == 'manager' %}
+                    <li data-section="pending-section">
+                        <a href="#"><i class="fa-solid fa-clipboard-list"></i> <span>Pending Requests</span>
+                            {% if pending_requests|length > 0 %}
+                            <span class="badge badge-pending">{{ pending_requests|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li data-section="directory-section">
+                        <a href="#"><i class="fa-solid fa-users"></i> <span>Employee Directory</span></a>
+                    </li>
+                    <li data-section="reports-section">
+                        <a href="#"><i class="fa-solid fa-chart-pie"></i> <span>Leave Reports</span></a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> <span>Log Out</span></a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-wrapper">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggleBtn"><i class="fa-solid fa-bars"></i></button>
+                    <h1 class="header-title" id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <span class="current-date"><i class="fa-regular fa-calendar"></i> <span id="headerDateString"></span></span>
+                </div>
+            </header>
+            
+            <main class="app-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+        {% else %}
+            <!-- For login / auth routes -->
+            <main class="auth-content">
+                {% block auth_content %}{% endblock %}
+            </main>
+        {% endif %}
+    </div>
+
+    <!-- Custom Javascript Logic -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Set date in header
+        const dateSpan = document.getElementById('headerDateString');
+        if (dateSpan) {
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            dateSpan.textContent = new Date().toLocaleDateString('en-US', options);
+        }
+        
+        // Auto-dismiss toasts after 5 seconds
+        setTimeout(() => {
+            const container = document.getElementById('toastContainer');
+            if (container) {
+                container.style.opacity = '0';
+                setTimeout(() => container.remove(), 600);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

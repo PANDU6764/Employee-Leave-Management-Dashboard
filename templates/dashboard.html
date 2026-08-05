@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Section: Dashboard Overview (Common to both but adapted) -->
+<section id="dashboard-section" class="active-section dashboard-section">
+    <div class="welcome-header">
+        <h2>Dashboard Overview</h2>
+        <p>Manage your time off and monitor leave balances.</p>
+    </div>
+
+    <!-- Personal Leave Balances Grid -->
+    <div class="section-title-sub"><i class="fa-solid fa-chart-simple"></i> Your Leave Balances</div>
+    <div class="stats-grid">
+        {% for bal in balances %}
+        <div class="stat-card glass balance-card border-{{ bal.leave_type.lower() }}">
+            <div class="balance-icon icon-{{ bal.leave_type.lower() }}">
+                {% if bal.leave_type == 'Casual' %}
+                    <i class="fa-solid fa-mug-hot"></i>
+                {% elif bal.leave_type == 'Sick' %}
+                    <i class="fa-solid fa-briefcase-medical"></i>
+                {% else %}
+                    <i class="fa-solid fa-umbrella-beach"></i>
+                {% endif %}
+            </div>
+            <div class="balance-details">
+                <h3>{{ bal.leave_type }} Leave</h3>
+                <div class="balance-numbers">
+                    <span class="remaining-value">{{ bal.remaining }}</span>
+                    <span class="allocated-value">/ {{ bal.allocated }} days left</span>
+                </div>
+                <div class="balance-status-sub">
+                    <span>Used: <strong>{{ bal.used }}</strong></span>
+                    <span>Pending: <strong>{{ bal.pending }}</strong></span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar progress-{{ bal.leave_type.lower() }}" style="width: {{ (bal.remaining / bal.allocated * 100) if bal.allocated > 0 else 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Overview Sub-sections based on Role -->
+    <div class="overview-split">
+        {% if current_user.role == 'employee' %}
+        <!-- Recent Requests (Employee) -->
+        <div class="overview-block glass">
+            <div class="block-header">
+                <h3><i class="fa-solid fa-history"></i> Recent Requests</h3>
+                <button class="btn btn-sm btn-outline nav-shortcut" data-target="history-section">View All</button>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>Duration</th>
+                            <th>Dates</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if my_requests %}
+                            {% for req in my_requests[:5] %}
+                            <tr>
+                                <td><strong>{{ req.leave_type }}</strong></td>
+                                <td>{{ req.duration }} days</td>
+                                <td class="date-col">{{ req.start_date.strftime('%b %d') }} - {{ req.end_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <span class="badge badge-{{ req.status.lower() }}">{{ req.status }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No leave requests found.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Apply Quick Action (Employee) -->
+        <div class="overview-block glass flex-center-content">
+            <div class="quick-action-card">
+                <i class="fa-solid fa-paper-plane quick-action-icon"></i>
+                <h3>Need Time Off?</h3>
+                <p>Apply for a new leave request instantly using our interactive time-off request wizard.</p>
+                <button class="btn btn-primary nav-shortcut" data-target="apply-section">Request Leave Now</button>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if current_user.role == 'manager' %}
+        <!-- Pending Requests Quick View (Manager) -->
+        <div class="overview-block glass full-width">
+            <div class="block-header">
+                <h3><i class="fa-solid fa-clock"></i> Urgent Pending Approvals</h3>
+                <button class="btn btn-sm btn-outline nav-shortcut" data-target="pending-section">Manage All ({{ pending_requests|length }})</button>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Leave Type</th>
+                            <th>Duration</th>
+                            <th>Dates</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if pending_requests %}
+                            {% for req in pending_requests[:5] %}
+                            <tr>
+                                <td>
+                                    <div class="table-user-cell">
+                                        <div class="avatar-sm">{{ req.applicant.first_name[0] }}{{ req.applicant.last_name[0] }}</div>
+                                        <span>{{ req.applicant.first_name }} {{ req.applicant.last_name }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ req.applicant.department }}</td>
+                                <td><strong>{{ req.leave_type }}</strong></td>
+                                <td>{{ req.duration }} days</td>
+                                <td>{{ req.start_date.strftime('%b %d') }} - {{ req.end_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <button class="btn btn-xs btn-primary nav-shortcut" data-target="pending-section">Review</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">Great job! All pending leave requests have been processed.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+{% if current_user.role == 'employee' %}
+<!-- Section: Apply for Leave (Employee) -->
+<section id="apply-section" class="dashboard-section">
+    <div class="section-header">
+        <h2>Apply for Leave</h2>
+        <p>Complete the form below to request time off. Leave balances will be temporarily held as 'Pending'.</p>
+    </div>
+    
+    <div class="apply-container glass">
+        <div id="apply-error-alert" class="alert alert-danger hidden"></div>
+        <div id="apply-success-alert" class="alert alert-success hidden"></div>
+
+        <form id="applyLeaveForm" class="grid-form">
+            <div class="form-row">
+                <div class="form-group col-6">
+                    <label for="leave_type"><i class="fa-solid fa-list-ul"></i> Leave Type</label>
+                    <select id="leave_type" name="leave_type" required>
+                        <option value="" disabled selected>Select a leave type</option>
+                        <option value="Casual">Casual Leave</option>
+                        <option value="Sick">Sick Leave</option>
+                        <option value="Paid">Paid Leave</option>
+                    </select>
+                </div>
+                
+                <div class="form-group col-6">
+                    <div class="balance-helper-tooltip" id="balanceHelper">
+                        Select a leave type to view remaining balance.
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-6">
+                    <label for="start_date"><i class="fa-regular fa-calendar-plus"></i> Start Date</label>
+                    <input type="date" id="start_date" name="start_date" required>
+                </div>
+                
+                <div class="form-group col-6">
+                    <label for="end_date"><i class="fa-regular fa-calendar-minus"></i> End Date</label>
+                    <input type="date" id="end_date" name="end_date" required>
+                </div>
+            </div>
+
+            <div class="duration-display-card">
+                <div class="duration-title">Calculated Duration</div>
+                <div class="duration-value"><span id="daysCount">0</span> <span class="duration-unit">Days</span></div>
+            </div>
+
+            <div class="form-group full-width">
+                <label for="reason"><i class="fa-regular fa-message"></i> Reason for Leave</label>
+                <textarea id="reason" name="reason" placeholder="Please provide details about your leave request..." rows="4" required></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="reset" class="btn btn-outline" id="resetBtn">Clear Form</button>
+                <button type="submit" class="btn btn-primary">
+                    <span>Submit Application</span> <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Section: My Leave History (Employee) -->
+<section id="history-section" class="dashboard-section">
+    <div class="section-header">
+        <h2>My Leave History</h2>
+        <p>A comprehensive log of all your leave applications and their current status.</p>
+    </div>
+
+    <div class="history-container glass">
+        <div class="table-responsive">
+            <table class="data-table" id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Applied On</th>
+                        <th>Leave Type</th>
+                        <th>Dates</th>
+                        <th>Duration</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Remarks / Reviewed By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if my_requests %}
+                        {% for req in my_requests %}
+                        <tr>
+                            <td class="timestamp-col">{{ req.applied_on.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td><strong>{{ req.leave_type }}</strong></td>
+                            <td class="date-col">{{ req.start_date.strftime('%Y-%m-%d') }} to {{ req.end_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ req.duration }} days</td>
+                            <td class="reason-col" title="{{ req.reason }}">{{ req.reason }}</td>
+                            <td>
+                                <span class="badge badge-{{ req.status.lower() }}">{{ req.status }}</span>
+                            </td>
+                            <td>
+                                {% if req.status != 'Pending' %}
+                                    <div class="remarks-box">
+                                        <span class="reviewer-tag"><i class="fa-solid fa-user-tie"></i> By {{ req.reviewer_name or 'Manager' }}</span>
+                                        {% if req.manager_remarks %}
+                                            <p class="remarks-text">"{{ req.manager_remarks }}"</p>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">Awaiting review</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">You have not submitted any leave requests yet.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% if current_user.role == 'manager' %}
+<!-- Section: Pending Requests Review (Manager) -->
+<section id="pending-section" class="dashboard-section">
+    <div class="section-header">
+        <h2>Pending Requests Review</h2>
+        <p>Evaluate employee leave applications. Check their balances and approve or reject with comments.</p>
+    </div>
+
+    <div class="pending-list" id="pendingRequestsContainer">
+        {% if pending_requests %}
+            {% for req in pending_requests %}
+            <div class="request-card glass border-{{ req.leave_type.lower() }}" id="req-card-{{ req.id }}">
+                <div class="card-top">
+                    <div class="employee-meta">
+                        <div class="avatar">{{ req.applicant.first_name[0] }}{{ req.applicant.last_name[0] }}</div>
+                        <div class="meta-text">
+                            <h4>{{ req.applicant.first_name }} {{ req.applicant.last_name }}</h4>
+                            <span class="employee-dept"><i class="fa-solid fa-building"></i> {{ req.applicant.department }}</span>
+                            <span class="employee-email"><i class="fa-solid fa-envelope"></i> {{ req.applicant.email }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="request-badge-info">
+                        <span class="req-type-badge type-{{ req.leave_type.lower() }}">{{ req.leave_type }}</span>
+                        <div class="req-dates">
+                            <span class="dates"><i class="fa-regular fa-calendar-days"></i> {{ req.start_date.strftime('%Y-%m-%d') }} to {{ req.end_date.strftime('%Y-%m-%d') }}</span>
+                            <span class="duration"><strong>{{ req.duration }}</strong> days</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-middle">
+                    <div class="reason-section">
+                        <h5>Employee Reason:</h5>
+                        <p>"{{ req.reason }}"</p>
+                    </div>
+                    
+                    <div class="pending-balances-subgrid">
+                        <h5>Leave Balances:</h5>
+                        <div class="mini-balances">
+                            {% for b in req.applicant.leave_balances %}
+                            <div class="mini-balance-pill {% if b.leave_type == req.leave_type %}active-pill{% endif %}">
+                                <span>{{ b.leave_type }}: <strong>{{ b.remaining }}</strong> / {{ b.allocated }} remaining</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-bottom">
+                    <div class="remarks-input-wrapper">
+                        <label for="remarks-{{ req.id }}">Manager Remarks (Optional)</label>
+                        <input type="text" id="remarks-{{ req.id }}" placeholder="Add comments, instructions or rejection reasons...">
+                    </div>
+                    
+                    <div class="action-btn-group">
+                        <button class="btn btn-danger btn-sm" onclick="reviewRequest({{ req.id }}, 'reject')">
+                            <i class="fa-solid fa-xmark"></i> Reject
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="reviewRequest({{ req.id }}, 'approve')">
+                            <i class="fa-solid fa-check"></i> Approve
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data-card glass text-center">
+                <i class="fa-solid fa-circle-check checked-in-icon"></i>
+                <h3>No Pending Leave Requests</h3>
+                <p>All leaves are reviewed and up to date.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Section: Employee Directory & Search (Manager) -->
+<section id="directory-section" class="dashboard-section">
+    <div class="section-header">
+        <h2>Employee Directory</h2>
+        <p>Search all employees to audit their leave balances, active details, and request summaries.</p>
+    </div>
+
+    <div class="directory-container glass">
+        <div class="search-bar-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="employeeSearchInput" placeholder="Search by name, department, email, username..." onkeyup="searchEmployees()">
+            <button class="btn btn-primary" onclick="searchEmployees()">Search</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th>Casual Bal.</th>
+                        <th>Sick Bal.</th>
+                        <th>Paid Bal.</th>
+                        <th>Approved Leaves</th>
+                        <th>Pending Leaves</th>
+                    </tr>
+                </thead>
+                <tbody id="directoryTableBody">
+                    <!-- Loaded dynamically via JavaScript on load/search -->
+                    <tr>
+                        <td colspan="7" class="text-center">Loading employee directory...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- Section: Leave Reports & Graphs (Manager) -->
+<section id="reports-section" class="dashboard-section">
+    <div class="section-header">
+        <h2>Leave Reports & Analytics</h2>
+        <p>Monitor leave distribution patterns, monthly trends, and download offline CSV exports.</p>
+    </div>
+
+    <!-- Export Action Card -->
+    <div class="report-export-bar glass">
+        <div class="export-text">
+            <h3>Export System Report</h3>
+            <p>Generate and download a complete record of all employee leave history in Excel-compatible CSV format.</p>
+        </div>
+        <a href="/api/reports/export" class="btn btn-primary"><i class="fa-solid fa-file-csv"></i> Export Leave History (CSV)</a>
+    </div>
+
+    <!-- Graphical Reports Grid -->
+    <div class="charts-grid">
+        <div class="chart-card glass">
+            <h3>Leaves Taken by Type</h3>
+            <div class="chart-canvas-container">
+                <canvas id="typeChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card glass">
+            <h3>Leaves Taken by Department</h3>
+            <div class="chart-canvas-container">
+                <canvas id="departmentChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card glass">
+            <h3>Monthly Leave Count (Current Year)</h3>
+            <div class="chart-canvas-container">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card glass">
+            <h3>Request Status Breakdown</h3>
+            <div class="chart-canvas-container">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Inject initial data for JS scripts -->
+<script>
+    window.USER_ROLE = "{{ current_user.role }}";
+    
+    // Inject personal balances for form limits
+    window.USER_BALANCES = {
+        {% for b in balances %}
+        "{{ b.leave_type }}": {
+            allocated: {{ b.allocated }},
+            used: {{ b.used }},
+            pending: {{ b.pending }},
+            remaining: {{ b.remaining }}
+        },
+        {% endfor %}
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block auth_content %}
+<div class="login-wrapper">
+    <div class="login-backdrop-decor">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+    
+    <div class="login-card glass">
+        <div class="login-header">
+            <div class="login-logo">
+                <i class="fa-solid fa-plane-departure"></i>
+            </div>
+            <h2>Lumina</h2>
+            <p>Employee Leave Management System</p>
+        </div>
+
+        <form action="{{ url_for('login') }}" method="POST" class="login-form">
+            <div class="form-group">
+                <label for="username"><i class="fa-solid fa-user-lock"></i> Username</label>
+                <input type="text" id="username" name="username" placeholder="e.g. charlie or alice" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password"><i class="fa-solid fa-key"></i> Password</label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()"><i class="fa-regular fa-eye" id="toggleIcon"></i></button>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">
+                <span>Sign In</span> <i class="fa-solid fa-arrow-right-to-bracket"></i>
+            </button>
+        </form>
+        
+        <div class="login-helper">
+            <div class="helper-info-title"><i class="fa-solid fa-circle-info"></i> Demo Accounts</div>
+            <div class="demo-accounts-grid">
+                <div class="demo-role-col">
+                    <strong>Manager</strong>
+                    <span>Username: <code>alice</code></span>
+                    <span>Password: <code>password123</code></span>
+                </div>
+                <div class="demo-role-col">
+                    <strong>Employee</strong>
+                    <span>Username: <code>charlie</code></span>
+                    <span>Password: <code>password123</code></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'fa-regular fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'fa-regular fa-eye';
+    }
+}
+</script>
+{% endblock %}
